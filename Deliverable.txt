@@ -8,20 +8,30 @@
 5-Rest Controller
 
 *Steps to run applicaton:
-1- please run scripts in "\src\main\resources\scripts\chatApp.sql" 
-2- To send message from Postman:
-	2.1- please visit "http://localhost:8082/message/loginwithmsg"
-	2.2- Please pass user name and password parameters (Keys : "userName", "password") 
-	--values must be inserted first in database or select values from exist data.
-3-To get Statestics for a conversation of specific user
-	3.1-visit :"http://localhost:8082/message/countUserChat"
-	3.2-pass user name parameter (key : "userName")
-4-To get statestics for all chats : "http://localhost:8082/message/countAllUsersChats"
+
+	1- please run scripts in "\src\main\resources\scripts\chatApp.sql" 
+
+	2- To login from Postman:
+		2.1- please visit "http://localhost:9095/message/userLogin"
+		2.2- Please pass user name and password parameters (Keys : "userName", "password") 
+		--values must be inserted first in database or select values from exist data.
+		
+	3-To send message :
+		3.1- please visit "http://localhost:9095/message/sendMessage"
+		3.2- put your message in Body Tab (row) in postman 
+		
+	4-To logout please try previous step with "Bye Bye" in message body
+
+	5-To get Statestics for a conversation of specific user visit :"http://localhost:9095/message/countUserChat"
+
+	6-To get statestics for all chats : "http://localhost:9095/message/countAllUsersChats"
 
 *App Link On Github : "https://github.com/DoaaAwad/chatapp01"
 
+-------------------------------------------------------------------------------
 
---------------------------------------------------------------------------------------------------
+
+-------------------------------------------------------------------------------
 *For Web Socket I followed many tutorials but I faced many problems that I couldn't solve as it is my first time to use Spring boot, Jpa, Rest And Web Sockets!
 
 

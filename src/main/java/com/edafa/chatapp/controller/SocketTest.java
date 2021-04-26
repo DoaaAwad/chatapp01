@@ -19,7 +19,7 @@ public class SocketTest {
             System.out.println("Server is listening on port " + port);
 
             while (true) {
-                Socket socket = serverSocket.accept();
+                Socket socket = serverSocket.accept();      //App Stops here for multiple ports
 
                 System.out.println("New client connected");
 

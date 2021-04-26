@@ -2,13 +2,11 @@ package com.edafa.chatapp.controller;
 
 import com.edafa.chatapp.dao.jpaRepository.UserJpaRepository;
 import com.edafa.chatapp.entity.User;
+import com.edafa.chatapp.service.IUserService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.json.JSONException;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestMethod;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import javax.annotation.PostConstruct;
 import java.io.File;
@@ -24,25 +22,26 @@ import java.util.*;
 public class MessagingController {
     @Autowired
     UserJpaRepository userJpaRepository;
+    @Autowired
+    IUserService iUserService;
 
     private List<User> users = new ArrayList<>();
     private HashMap<String, Integer> userWordsCount;
     private HashMap<String, Integer> allWordsCount;
+    private User loggedInUser;
 
 
     @PostConstruct
     public void init(){
         userWordsCount = new HashMap<>();
         allWordsCount = new HashMap<>();
+        loggedInUser = null;
     }
 
-    @RequestMapping(value = "/loginwithmsg", method = RequestMethod.GET)
-    public String loginWithMsg(@RequestParam String userName, @RequestParam String password, @RequestParam String message) {
+    @GetMapping("/userLogin")
+    public String login(@RequestParam String userName, @RequestParam String password) {
 
         if (userAuthentication(userName, password)) {
-
-            createFileAndWriteMessages(userName, message);
-
             return "Hello " + userName;
         } else {
             return "please Enter valid user name and password";
@@ -50,46 +49,60 @@ public class MessagingController {
     }
 
     private boolean userAuthentication(String userName, String password) {
-        List<User> users = userJpaRepository.findAll();
-        for (User user : users) {
-            if (userName.equals(user.getUserName()) && password.equals(user.getPassword())){
+        try {
+            loggedInUser = iUserService.searchByUserNameAndPassword(userName, password);
+            if (loggedInUser != null)
                 return true;
+        } catch (Exception e) {
+            e.printStackTrace();
+            List<User> users = userJpaRepository.findAll();
+            if (users != null && !users.isEmpty()) {
+                for (User user : users) {
+                    if (userName.equals(user.getUserName()) && password.equals(user.getPassword())) {
+                        loggedInUser = user;
+                        return true;
+                    }
+                }
             }
         }
         return false;
     }
 
-//    @RequestMapping(value = "/login", method = RequestMethod.POST)
-    private String createFileAndWriteMessages(String userName, String message) {
+    @PostMapping("/sendMessage")
+    private String createFileAndWriteMessages(@RequestBody String message) {
+        if (getLoggedInUser() == null)
+            return "please login first";
         try {
-            File userFile = new File(userName + "Chat.txt");
+            File userFile = new File(getLoggedInUser().getUserName() + "Chat.txt");
             if (userFile.createNewFile()) {
                 System.out.println("File created: " + userFile.getName());
             } else {
                 System.out.println("File already exists.");
             }
 
-            FileWriter myWriter = new FileWriter(userName + "Chat.txt", true);
+            FileWriter myWriter = new FileWriter(getLoggedInUser().getUserName() + "Chat.txt", true);
             myWriter.write(message + "\n");
             myWriter.close();
             System.out.println("Successfully wrote to the file.");
 
             if (message.equals("Bye Bye")) {
-                /**
-                 * Don't forget to Close Connection
-                 * */
+                loggedInUser = null;
                 return "Conversation ended";
             }
 
         } catch (Exception e) {
             e.printStackTrace();
         }
-        return "Hello " + userName;
+        return "Hello " + getLoggedInUser().getUserName();
     }
 
-    @RequestMapping(value = "/countUserChat", method = RequestMethod.GET)
-    public String countWordsForUserName(@RequestParam String userName) {
+    @GetMapping("/countUserChat")
+    public String countWordsForUserName(String userName) {
 
+        if (loggedInUser == null)
+            return "Please login first";
+        if (userName == null)
+            userName = loggedInUser.getUserName();
         userWordsCount = new HashMap<>();
 
         StringBuilder result = new StringBuilder("File Name : \t");
@@ -97,14 +110,14 @@ public class MessagingController {
         try {
             Scanner userFile = new Scanner(new File(userName + "Chat.txt"));
 
-            while(userFile.hasNext()) {
+            while (userFile.hasNext()) {
                 String word = userFile.next();
                 Integer count = userWordsCount.get(word);
-                if(count != null)
-                    count ++ ;
+                if (count != null)
+                    count++;
                 else
-                    count = 1 ;
-                userWordsCount.put(word,count);
+                    count = 1;
+                userWordsCount.put(word, count);
             }
 
             for (Map.Entry<String, Integer> entry : userWordsCount.entrySet()) {
@@ -112,7 +125,7 @@ public class MessagingController {
                 result.append(entry.getValue()).append(" \n");
             }
 
-            } catch (Exception e) {
+        } catch (Exception e) {
             System.out.println("An error occurred.");
             e.printStackTrace();
             return "Not found a chat for this user";
@@ -120,8 +133,11 @@ public class MessagingController {
         return result.toString();
     }
 
-    @RequestMapping(value = "/countAllUsersChats", method = RequestMethod.GET)
-    public String countWordsForAllUsers(){
+    @GetMapping("/countAllUsersChats")
+    public String countWordsForAllUsers() {
+
+        if (loggedInUser == null)
+            return "Please login first";
 
         allWordsCount = new HashMap<>();
         StringBuilder result = new StringBuilder();
@@ -132,7 +148,7 @@ public class MessagingController {
             countWordsForUserName(user.getUserName());
             for (Map.Entry<String, Integer> entry : userWordsCount.entrySet()) {
                 Integer count = userWordsCount.get(entry.getKey());
-                if (count != null )
+                if (count != null)
                     count += allWordsCount.get(entry.getKey()) != null ? allWordsCount.get(entry.getKey()) : 0;
                 else
                     count = 1;
@@ -145,13 +161,13 @@ public class MessagingController {
             result.append(entry.getValue()).append(" \n");
         }
 
-        if(result == null || (result != null && result.toString().trim().isEmpty()))
+        if (result == null || (result != null && result.toString().trim().isEmpty()))
             result.append("Chats not found");
         return result.toString();
     }
 
 
-//    @RequestMapping(value = "/loginJson", method = RequestMethod.GET)
+    //    @RequestMapping(value = "/loginJson", method = RequestMethod.GET)
     private boolean userAuthenticationUsingJson() throws JSONException {
         User[] users;
         try {
@@ -188,5 +204,13 @@ public class MessagingController {
 
     public void setUsers(List<User> users) {
         this.users = users;
+    }
+
+    public User getLoggedInUser() {
+        return loggedInUser;
+    }
+
+    public void setLoggedInUser(User loggedInUser) {
+        this.loggedInUser = loggedInUser;
     }
 }
